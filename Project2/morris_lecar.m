@@ -87,4 +87,35 @@ fprintf('The eigen values are %d and %d \n', eigenValues(1), eigenValues(2));
 
 end
 
+%% Morris Lecar dynamics equation solver
+function dS = morris_lecar_ddt(t,S)
+
+global C;
+global gCa;
+global VCa;
+global gK;
+global VK;
+global gL;
+global VL;
+global v1;
+global v2;
+global v3;
+global v4;
+global phi;
+global Iext;
+
+%locally define state variables:
+V=S(1);
+w=S(2);
+
+%local functions:
+m_inf = (0.5*(1+tanh((V-v1)/v2)));
+w_inf = (0.5*(1+tanh((V-v3)/v4)));
+
+ddt_V = (1/C)*(gCa*m_inf*(VCa-V) + gK*w*(VK-V) + gL*(VL-V)+Iext);
+ddt_w = phi*(w_inf-w)*cosh((V-v3)/(2*v4));
+
+dS=[ddt_V; ddt_w];
+
+end
 
