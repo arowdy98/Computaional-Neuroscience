@@ -68,6 +68,23 @@ dw_dt = phi*((0.5*(1+tanh((V_quiv-v3)/v4)))-w_quiv).*cosh((V_quiv-v3)/(2*v4));
 quiver(x,y,dV_dt,dw_dt);
 legend('V nullcline', 'w nullcline','Equilibrium Point','Trajectories');
 
+%% Stability of the Jacobian matrix (Question 3)
+syms V w
+dV_dt = (1/C)*(gCa*(0.5*(1+tanh((V-v1)/v2)))*(VCa-V) + gK*w*(VK-V) + gL*(VL-V)) + Iext;
+dw_dt = phi*((0.5*(1+tanh((V-v3)/v4)))-w)*cosh((V-v3)/(2*v4));
+
+JSymbolic = jacobian([dV_dt, dw_dt],[V,w]);
+V = V_eq;
+w = w_eq;
+Jmatrix = zeros(2,2);
+Jmatrix(1,1) = subs(JSymbolic(1,1));
+Jmatrix(1,2) = subs(JSymbolic(1,2));
+Jmatrix(2,1) = subs(JSymbolic(2,1));
+Jmatrix(2,2) = subs(JSymbolic(2,2));
+
+eigenValues = eig(Jmatrix);
+fprintf('The eigen values are %d and %d \n', eigenValues(1), eigenValues(2));
+
 end
 
 
