@@ -167,6 +167,49 @@ figure;
 hold on
 plot(initialV,max_V);
 
+%% Response to higher Iext (Question 7)
+Iext = 86;
+
+figure;
+hold on
+Vnc1 = @(V) (Iext - gCa*(0.5*(1+tanh((V-v1)/v2)))*(V-VCa) - gL*(V-VL))/(gK*(V-VK));
+wnc1 = @(V) (0.5*(1+tanh((V-v3)/v4)));
+fplot(@(V) Vnc1(V), [-80 100]);
+fplot(@(V) wnc1(V), [-80 100]);
+xlabel('V(in mV)');
+ylabel('w');
+title('Phase Plane Plot(MLE)');
+
+% Finding equilibrium points using MATLAB
+syms V w
+Vnc1_eqn = (1/C)*(Iext - gCa*(0.5*(1+tanh((V-v1)/v2)))*(V-VCa) - gK*w*(V-VK) - gL*(V-VL)) == 0;
+wnc1_eqn = (0.5*(1+tanh((V-v3)/v4)) - w) == 0;
+eq_pt_1 = solve([Vnc1_eqn, wnc1_eqn], [V, w]);
+
+V_eq1 = double(eq_pt_1.V);
+w_eq1 = double(eq_pt_1.w);
+
+plot(V_eq1, w_eq1, 'k+', 'linewidth', 2);
+text(V_eq1, w_eq1, ['(' num2str(round(V_eq1,5)) ',' num2str(round(w_eq1,5)) ')']);
+grid on;
+
+fprintf('The equilibrium point is located at (%d,%d) \n', V_eq1, w_eq1);
+
+%------------------
+tSpan = [0,300]
+initial = [V_eq,w_eq];
+[t1, S1] = ode15s(@(t,S)morris_lecar_ddt(t,S),tSpan, initial, options);
+initial = [V_eq1,w_eq1];
+[t2, S2] = ode15s(@(t,S)morris_lecar_ddt(t,S),tSpan, initial, options);
+initial = [-27.9,0.17];
+[t3, S3] = ode15s(@(t,S)morris_lecar_ddt(t,S),tSpan, initial, options);
+% figure;
+% hold on
+
+plot(S1(:,1),S1(:,2));
+plot(S2(:,1),S2(:,2));
+plot(S3(:,1),S3(:,2));
+
 end
 
 %% Morris Lecar dynamics equation solver
