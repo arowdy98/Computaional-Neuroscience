@@ -129,6 +129,44 @@ title('Phase Plane Plot(MLE)');
 legend('\phi = 0.01','\phi = 0.02','\phi = 0.04');
 grid on;
 
+%% Depolarisation Threshold (Question 6)
+Iext = 0;
+tSpan = [0, 300];
+phi=0.04;
+initialV=linspace(-14.2,-13.8,401);  %to get threshold for phi = 0.04
+%phi=0.01;
+%initialV=linspace(-15.56,-15.48,401);    %to get threshold for phi = 0.01
+max_V = zeros(401);
+
+%phi = 0.01;
+%[t1, S1] = ode15s(@(t,S)morris_lecar_ddt(t,S),tSpan, initial1, options);
+%[t2, S2] = ode15s(@(t,S)morris_lecar_ddt(t,S),tSpan, initial2, options);
+
+
+flag=1;
+for n = 1:401 
+    [t,S] = ode15s(@(t,S)morris_lecar_ddt(t,S),tSpan, [initialV(n),w_eq], options);
+    max_V(n) = max(S(:,1));
+    if max_V(n) >= 0 && flag==1
+        fprintf("Threshold is (%f)",initialV(n))
+        flag=0;
+    end
+end
+
+% figure;
+% hold on
+% Vnc = @(V) (Iext - gCa*(0.5*(1+tanh((V-v1)/v2)))*(V-VCa) - gL*(V-VL))/(gK*(V-VK));
+% wnc = @(V) (0.5*(1+tanh((V-v3)/v4)));
+% fplot(@(V) Vnc(V), [-80 100],'k');
+% fplot(@(V) wnc(V), [-80 100],'k');
+% 
+% plot(S1(:,1),S1(:,2));
+% plot(S2(:,1),S2(:,2));
+
+figure;
+hold on
+plot(initialV,max_V);
+
 end
 
 %% Morris Lecar dynamics equation solver
