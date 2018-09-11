@@ -85,6 +85,50 @@ Jmatrix(2,2) = subs(JSymbolic(2,2));
 eigenValues = eig(Jmatrix);
 fprintf('The eigen values are %d and %d \n', eigenValues(1), eigenValues(2));
 
+%% Generating an action potential using MLE (Question 5)
+options = odeset('RelTol',1e-3,'AbsTol',1e-6, 'refine',5, 'MaxStep', 1);
+
+Iext = 0;
+tSpan = [0, 300];
+initial = [0,w_eq];
+
+phi = 0.01;
+[t1, S1] = ode15s(@(t,S)morris_lecar_ddt(t,S),tSpan, initial, options);
+
+phi = 0.02;
+[t2, S2] = ode15s(@(t,S)morris_lecar_ddt(t,S),tSpan, initial, options);
+
+phi = 0.04;
+[t3, S3] = ode15s(@(t,S)morris_lecar_ddt(t,S),tSpan, initial, options);
+
+figure;
+hold on;
+plot(t1,S1(:,1));
+plot(t2, S2(:,1));
+plot(t3, S3(:,1));
+xlabel('Time(in ms)');
+ylabel('Volatage(in mV)');
+title('Action potentials with different \phi');
+legend('\phi = 0.01','\phi = 0.02','\phi = 0.04');
+grid on;
+
+figure;
+hold on
+Vnc = @(V) (Iext - gCa*(0.5*(1+tanh((V-v1)/v2)))*(V-VCa) - gL*(V-VL))/(gK*(V-VK));
+wnc = @(V) (0.5*(1+tanh((V-v3)/v4)));
+fplot(@(V) Vnc(V), [-80 100],'k');
+fplot(@(V) wnc(V), [-80 100],'k');
+
+plot(S1(:,1),S1(:,2));
+plot(S2(:,1),S2(:,2));
+plot(S3(:,1),S3(:,2));
+xlabel('V(in mV)');
+ylabel('w');
+ylim([0,1]);
+title('Phase Plane Plot(MLE)');
+legend('\phi = 0.01','\phi = 0.02','\phi = 0.04');
+grid on;
+
 end
 
 %% Morris Lecar dynamics equation solver
