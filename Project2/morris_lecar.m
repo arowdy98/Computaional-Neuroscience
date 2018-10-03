@@ -211,7 +211,123 @@ plot(S2(:,1),S2(:,2));
 plot(S3(:,1),S3(:,2));
 
 end
+function dS = HH_f_na(t,S)
+    global C;
+    global Iext;
+    global gK;
+    global gNa;
+    global gL;
+    global VK;
+    global VNa;
+    global VL;
+    global eps;
+    global f;
+    
+    V = S(1);
+    n = S(2);
+    m = S(3);
+    h = S(4);
+    
+    alphan =  -0.01 * (V + eps + 50)/(exp(-(V + eps + 50)/10)-1);
+    alpham =  -0.1 * (V + eps + 35)/(exp(-(V + eps + 35)/10)-1);
+    alphah = 0.07 * exp(-(V + 60)/20);
+    betan = 0.125 * exp(-(V + 60)/80);
+    betam = 4 * exp(-(V + 60)/18);
+    betah = 1/(exp(-(V + 30)/10) + 1);
+    
+    ddt_V = (1/C) * (Iext - gK * n^4 * (V - VK) - gNa * (1-f) * m^3 * h * (V-VNa) - gNa * f * m^3 * (V-VNa)  - gL * (V - VL));
+    ddt_n = alphan * (1 - n) - betan * n;
+    ddt_m = alpham * (1 - m) - betam * m;
+    ddt_h = alphah * (1 - h) - betah * h;
+    
+    dS = [ddt_V; ddt_n; ddt_m; ddt_h];
+end
 
+function dS = HH_reduced(t,S)
+    global C;
+    global Iext;
+    global gK;
+    global gNa;
+    global gL;
+    global VK;
+    global VNa;
+    global VL;
+    global eps;
+    global f;
+    global hconst;
+    global Vr;
+    V = S(1);
+    n = S(2);
+    
+    alphan =  -0.01 * (V + eps + 50)/(exp(-(V + eps + 50)/10)-1);
+    alpham =  -0.1 * (Vr + eps + 35)/(exp(-(Vr + eps + 35)/10)-1);
+    alphah = 0.07 * exp(-(V + 60)/20);
+    betan = 0.125 * exp(-(V + 60)/80);
+    betam = 4 * exp(-(Vr + 60)/18);
+    betah = 1/(exp(-(V + 30)/10) + 1);
+    
+    mInf = alpham/(alpham + betam);
+    
+    ddt_V = (1/C) * (Iext - gK * n^4 * (V - VK) - gNa * (1-f) * mInf^3 * hconst * (V-VNa) - gNa * f * mInf^3 * (V-VNa)  - gL * (V - VL));
+    ddt_n = alphan * (1 - n) - betan * n;
+    
+    dS = [ddt_V; ddt_n];
+end
+
+function dS = HH_reduced_m(t,S,nInf,hInf)
+    global C;
+    global Iext;
+    global gK;
+    global gNa;
+    global gL;
+    global VK;
+    global VNa;
+    global VL;
+    global eps;
+    global Vr;
+    
+    V = S(1);
+    m = S(2);
+    
+    alpham =  -0.1 * (V + eps + 35)/(exp(-(V + eps + 35)/10)-1);
+    betam = 4 * exp(-(V + 60)/18);
+    
+    ddt_V = (1/C) * (Iext - gK * nInf^4 * (V - VK) - gNa * m^3 * hInf * (V - VNa) - gL * (V - VL));
+    ddt_m = alpham * (1 - m) - betam * m;
+    
+    dS = [ddt_V; ddt_m];
+end
+
+function dS = hodgkin_huxley_ddt(t,S)
+    global C;
+    global Iext;
+    global gK;
+    global gNa;
+    global gL;
+    global VK;
+    global VNa;
+    global VL;
+    global eps;
+    
+    V = S(1);
+    n = S(2);
+    m = S(3);
+    h = S(4);
+    
+    alphan =  -0.01 * (V + eps + 50)/(exp(-(V + eps + 50)/10)-1);
+    alpham =  -0.1 * (V + eps + 35)/(exp(-(V + eps + 35)/10)-1);
+    alphah = 0.07 * exp(-(V + 60)/20);
+    betan = 0.125 * exp(-(V + 60)/80);
+    betam = 4 * exp(-(V + 60)/18);
+    betah = 1/(exp(-(V + 30)/10) + 1);
+    
+    ddt_V = (1/C) * (Iext - gK * n^4 * (V - VK) - gNa * m^3 * h * (V - VNa) - gL * (V - VL));
+    ddt_n = alphan * (1 - n) - betan * n;
+    ddt_m = alpham * (1 - m) - betam * m;
+    ddt_h = alphah * (1 - h) - betah * h;
+    
+    dS = [ddt_V; ddt_n; ddt_m; ddt_h];
+end
 %% Morris Lecar dynamics equation solver
 function dS = morris_lecar_ddt(t,S)
 
