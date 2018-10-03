@@ -211,6 +211,133 @@ plot(S2(:,1),S2(:,2));
 plot(S3(:,1),S3(:,2));
 
 end
+
+function F = get_frequency(t, S)
+    n = size(S);
+    n = n(1);
+    S = S(:, 1);
+    % Check for spike generation:
+    has_spikes = 0;
+    for i = 1:n
+        if S(i) > 0
+            has_spikes = 1;
+        end
+    end
+    if has_spikes == 0
+        F = 0;
+        return
+    end
+    
+    % Move ahead till we get a negative signal: 
+    while S(n) > 0 
+        n = n - 1;
+    end
+    % Record first positive signal:
+    while S(n) < 0 
+        n = n -1 ;
+    end
+    t2 = t(n);
+    % Move ahead till we get negative signal again:
+    while S(n) >0
+        n = n-1;
+    end
+    % Record second positive signal:
+    while S(n) < 0
+        n = n-1;
+    end
+    t1 = t(n);
+    F = 1000 / (t2 - t1);
+end
+
+function stability_check(Iext)
+    global C;
+    %global Iext;
+    global gK;
+    global gNa;
+    global gL;
+    global VK;
+    global VNa;
+    global VL;
+    global eps;
+    
+    syms V n m h 
+    alphan =  -0.01 * (V + eps + 50)/(exp(-(V + eps + 50)/10)-1);
+    alpham =  -0.1 * (V + eps + 35)/(exp(-(V + eps + 35)/10)-1);
+    alphah = 0.07 * exp(-(V + 60)/20);
+    betan = 0.125 * exp(-(V + 60)/80);
+    betam = 4 * exp(-(V + 60)/18);
+    betah = 1/(exp(-(V + 30)/10) + 1);
+    mInf = alpham/(alpham + betam);
+    nInf = alphan/(alphan + betan);
+    hInf = alphah/(alphah + betah);
+    
+    V_nc = (1/C) * (Iext - gK * n^4 * (V - VK) - gNa * m^3 * h* (V - VNa) - gL * (V - VL)) == 0;
+    n_nc = alphan *(1-n) - betan*n == 0 ;
+    m_nc = alpham * (1 - m) - betam * m ==0 ;
+    h_nc = alphah * (1 - h) - betah * h ==0 ;
+    
+    eq_pt = solve([V_nc, n_nc, m_nc, h_nc], [V, n, m ,h]);
+    V_eq1 = double(eq_pt.V);
+    n_eq1 = double(eq_pt.n);
+    m_eq1 = double(eq_pt.m);
+    h_eq1 = double(eq_pt.h);
+    
+    for p=1:length(eq_pt)
+        fprintf('Equilibrium Point V=%f n=%f m=%f h=%f\n',eq_pt(p).V,eq_pt(p).n,eq_pt(p).m,eq_pt(p).h);
+    end
+    % Stability Analysis for equilibrium point
+    % fprintf('The equilibrium point is located at (%d,%d)  \n', V_eq1, n_eq1);
+
+    dV_dt = (1/C) * (Iext - gK * n^4 * (V - VK) - gNa * m^3 * h* (V - VNa) - gL * (V - VL));
+    dn_dt = alphan *(1-n) - betan*n;
+    dm_dt = alpham * (1 - m) - betam * m ;
+    dh_dt = alphah * (1 - h) - betah * h ;
+    
+    JSymbolic = jacobian([dV_dt, dn_dt, dm_dt, dh_dt],[V,n,m,h]);
+    V = V_eq1;
+    n = n_eq1;
+    m = m_eq1;
+    h = h_eq1;
+    Jmatrix = zeros(4,4);
+    Jmatrix(1,1) = subs(JSymbolic(1,1));
+    Jmatrix(1,2) = subs(JSymbolic(1,2));
+    Jmatrix(1,3) = subs(JSymbolic(1,3));
+    Jmatrix(1,4) = subs(JSymbolic(1,4));
+    Jmatrix(2,1) = subs(JSymbolic(2,1));
+    Jmatrix(2,2) = subs(JSymbolic(2,2));
+    Jmatrix(2,3) = subs(JSymbolic(2,3));
+    Jmatrix(2,4) = subs(JSymbolic(2,4));
+    Jmatrix(3,1) = subs(JSymbolic(3,1));
+    Jmatrix(3,2) = subs(JSymbolic(3,2));
+    Jmatrix(3,3) = subs(JSymbolic(3,3));
+    Jmatrix(3,4) = subs(JSymbolic(3,4));
+    Jmatrix(4,1) = subs(JSymbolic(4,1));
+    Jmatrix(4,2) = subs(JSymbolic(4,2));
+    Jmatrix(4,3) = subs(JSymbolic(4,3));
+    Jmatrix(4,4) = subs(JSymbolic(4,4));
+    
+    eigenValues = eig(Jmatrix);
+    fprintf('The eigen values are %f%+fi , %f%+fi , %f%+fi , %f%+fi \n', real(eigenValues(1)), imag(eigenValues(1)), ...
+            real(eigenValues(2)), imag(eigenValues(2)), real(eigenValues(3)), imag(eigenValues(3)), ...
+            real(eigenValues(4)), imag(eigenValues(4)));
+    k=0;
+    for x=1:4
+        if real(eigenValues(x)) < 0 
+            k = k+1;
+        else
+            k = k-1;
+        end
+    end
+    if k == 4 
+        fprintf("Stable\n");
+    elseif k == -4
+        fprintf("Unstable\n");
+    else
+        fprintf("Cannot say (Need to plot in 4 dimensions)\n");
+    end
+    
+end
+
 function dS = HH_f_na(t,S)
     global C;
     global Iext;
