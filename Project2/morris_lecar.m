@@ -359,6 +359,196 @@ for Iext = 80:1:100
 end
 plot(current, frequency);
 
+hold off
+%% Stable and unstable manifolds (Question 10)
+fprintf('\n------------------------- Part 10 ------------------------------ \n');
+% setting the values of constants for MLE:
+gCa = 4;
+VCa = 120;
+gK = 8;
+VK = -84;
+gL = 2;
+VL = -60;
+v1 = -1.2;
+v2 = 18;
+v3 = 12;
+v4 = 17.4;
+phi = 0.0667;
+Iext = 30;
+C = 20;
+% Plotting the Phase Plane with V and w null clines
+figure;
+hold on
+Vnc1 = @(V) (Iext - gCa*(0.5*(1+tanh((V-v1)/v2)))*(V-VCa) - gL*(V-VL))/(gK*(V-VK));
+wnc1 = @(V) (0.5*(1+tanh((V-v3)/v4)));
+fplot(@(V) Vnc1(V), [-80 100], '--');
+fplot(@(V) wnc1(V), [-80 100], ':');
+xlabel('V(in mV)');
+ylabel('w');
+title('Phase Plane Plot(MLE)');
+
+% Finding and plotting the equilibrium point for this system using MATLAB
+syms V w
+Vnc1_eqn = (1/C)*(Iext - gCa*(0.5*(1+tanh((V-v1)/v2)))*(V-VCa) - gK*w*(V-VK) - gL*(V-VL)) == 0;
+wnc1_eqn = (0.5*(1+tanh((V-v3)/v4)) - w) == 0;
+soln1 = vpasolve([Vnc1_eqn, wnc1_eqn], [V, w], [-40, 0]);
+soln2 = vpasolve([Vnc1_eqn, wnc1_eqn], [V, w], [-20, 0.02]);
+soln3 = vpasolve([Vnc1_eqn, wnc1_eqn], [V, w], [0, 0.25]);
+
+V_eq1 = double(soln1.V);
+w_eq1 = double(soln1.w);
+plot(V_eq1, w_eq1, 'o');
+text(V_eq1, w_eq1, ['(' num2str(round(V_eq1,3)) ',' num2str(round(w_eq1,3)) ')']);
+grid on;
+
+V_eq2 = double(soln2.V);
+w_eq2 = double(soln2.w);
+plot(V_eq2, w_eq2, 'o');
+text(V_eq2, w_eq2, ['(' num2str(round(V_eq2,3)) ',' num2str(round(w_eq2,3)) ')']);
+grid on;
+
+V_eq3 = double(soln3.V);
+w_eq3 = double(soln3.w);
+plot(V_eq3, w_eq3, 'o');
+text(V_eq3, w_eq3, ['(' num2str(round(V_eq3,3)) ',' num2str(round(w_eq3,3)) ')']);
+grid on;
+
+fprintf('Equilibrium points are : \n 1. (%f, %f) \n 2. (%f, %f) \n 3. (%f, %f)\n', ...
+        V_eq1, w_eq1, V_eq2, w_eq2, V_eq3, w_eq3);
+
+% Stability ananlysis of equilibrium point:
+syms V w
+V_eq = [V_eq1, V_eq2, V_eq3];
+w_eq = [w_eq1, w_eq2, w_eq3];
+dV_dt = (1/C)*(gCa*(0.5*(1+tanh((V-v1)/v2)))*(VCa-V) + gK*w*(VK-V) + gL*(VL-V) + Iext);
+dw_dt = phi*((0.5*(1+tanh((V-v3)/v4)))-w)*cosh((V-v3)/(2*v4));
+JSymbolic = jacobian([dV_dt, dw_dt],[V,w]);
+eigVectors = 0;
+for i = 1:3
+    V = V_eq(i);
+    w = w_eq(i);
+    Jmatrix = zeros(2,2);
+    Jmatrix(1,1) = subs(JSymbolic(1,1));
+    Jmatrix(1,2) = subs(JSymbolic(1,2));
+    Jmatrix(2,1) = subs(JSymbolic(2,1));
+    Jmatrix(2,2) = subs(JSymbolic(2,2));
+    eigenValues = eig(Jmatrix);
+    if i == 2
+        [eigVectors, D] = eig(Jmatrix)
+    end
+    fprintf('Equilibrium point %d : The eigen values are  %f%+fi , %f%+fi \n', i, real(eigenValues(1)), imag(eigenValues(1)), ...
+            real(eigenValues(2)), imag(eigenValues(2)));
+end
+
+% Plot the manifolds of the saddle point:
+vs = eigVectors(:,1)';
+vu = eigVectors(:,2)';
+
+% Evaluating manifolds
+start1 = [V_eq2, w_eq2] +  1 * vs;
+start2 = [V_eq2, w_eq2] +  1 * vu;
+start3 = [V_eq2, w_eq2] -  1 * vs;
+start4 = [V_eq2, w_eq2] -  1 * vu;
+[t1,S1]=ode15s(@(t,S)morris_lecar_ddt(t,S), [0 100], start1);
+plot(S1(:,1), S1(:,2), 'm');
+[t1,S1]=ode15s(@(t,S)morris_lecar_ddt(t,S), [0 -80], start2);
+plot(S1(:,1), S1(:,2), 'g');
+[t1,S1]=ode15s(@(t,S)morris_lecar_ddt(t,S), [0 100], start3);
+plot(S1(:,1), S1(:,2), 'm');
+[t1,S1]=ode15s(@(t,S)morris_lecar_ddt(t,S), [0 -30], start4);
+plot(S1(:,1), S1(:,2), 'g');
+legend('W nullcline','V nullcline','Equilibrium point1', 'Equilibrium point2', 'Equilibrium point3', ...
+        'Unstable manifolds', 'Stable manifolds');
+
+
+%% Firing Potentials for range of Iext in paramter set 2 (Question 11)
+fprintf('\n------------------------- Part 11 ------------------------------ \n');
+% setting the values of constants for MLE:
+gCa = 4;
+VCa = 120;
+gK = 8;
+VK = -84;
+gL = 2;
+VL = -60;
+v1 = -1.2;
+v2 = 18;
+v3 = 12;
+v4 = 17.4;
+phi = 0.0667;
+C = 20;
+
+% For Iext between 30 and 50 finding the nature of stability  of each equilibrium point
+currents = [30, 35, 39, 39.1, 39.2, 39.3, 39.4, 39.5, 39.5, 39.7, 39.8, 39.9, 40, 41, 42,  45,  47, 50];
+N = size(currents);
+N=N(2);
+frequency = zeros(N, 1);
+for i = 1:N
+    % Plotting the Phase Plane with V and w null clines
+    Iext = currents(i);
+    if (Iext > 37) && (Iext < 42)
+        figure;
+        hold on
+        Vnc1 = @(V) (Iext - gCa*(0.5*(1+tanh((V-v1)/v2)))*(V-VCa) - gL*(V-VL))/(gK*(V-VK));
+        wnc1 = @(V) (0.5*(1+tanh((V-v3)/v4)));
+        fplot(@(V) Vnc1(V), [-80 100], '--');
+        fplot(@(V) wnc1(V), [-80 100], ':');
+        xlabel('V(in mV)');
+        ylabel('w');
+        title(strcat('Phase Plane Plot(MLE) with Iext = ', num2str(Iext)));
+        hold on;
+    end
+    % Finding and plotting the equilibrium point for this system using MATLAB
+    syms V w
+    Vnc1_eqn = (1/C)*(Iext - gCa*(0.5*(1+tanh((V-v1)/v2)))*(V-VCa) - gK*w*(V-VK) - gL*(V-VL)) == 0;
+    wnc1_eqn = (0.5*(1+tanh((V-v3)/v4)) - w) == 0;
+    soln1 = vpasolve([Vnc1_eqn, wnc1_eqn], [V, w], [-40, 0]);
+    soln2 = vpasolve([Vnc1_eqn, wnc1_eqn], [V, w], [-20, 0]);
+    soln3 = vpasolve([Vnc1_eqn, wnc1_eqn], [V, w], [0, 0.2]);
+
+    V_eq1 = double(soln1.V);
+    w_eq1 = double(soln1.w);
+    V_eq2 = double(soln2.V);
+    w_eq2 = double(soln2.w);
+    V_eq3 = double(soln3.V);
+    w_eq3 = double(soln3.w);
+    
+    if isequal([V_eq1, w_eq1], [V_eq2, w_eq2]) 
+        fprintf("For Iext = %f, there is only one distinct equilibrium point\n", Iext);
+
+        [t,S]=ode15s(@(t,S)morris_lecar_ddt(t,S), [0 3000], [V_eq3 + 0.1, w_eq3+0.01]);
+        if (Iext > 37) && (Iext < 42)
+            plot(V_eq3, w_eq3, 'o');
+            text(V_eq3, w_eq3, ['(' num2str(round(V_eq3,3)) ',' num2str(round(w_eq3,3)) ')']);
+            grid on;
+            plot(S(:,1), S(:,2));
+        end
+        frequency(i) = get_frequency(t, S);
+    else
+        fprintf("For Iext = %f, there are three distinct equilibrium points\n", Iext);
+        [t,S]=ode15s(@(t,S)morris_lecar_ddt(t,S), [0 3000], [V_eq2 - 0.1, w_eq2-0.01]);
+        frequency(i) = 0;
+        
+        if (Iext >= 37) && (Iext < 42)
+            plot(V_eq1, w_eq1, 'o');
+            grid on;
+            plot(V_eq2, w_eq2, '-k');
+            grid on;
+            plot(V_eq3, w_eq3, 'o');
+            text(V_eq3, w_eq3, ['(' num2str(round(V_eq3,3)) ',' num2str(round(w_eq3,3)) ')']);
+            grid on;
+            plot(S(:,1), S(:,2));
+        end
+    end
+
+end
+hold off
+
+figure;
+hold on
+ylabel('Firing Rate (in hz or 1/s)');
+xlabel('Iext (in uA)');
+title('Firing Rate vs External Current');
+plot(currents, frequency);
 hold off    
 end
 
