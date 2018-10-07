@@ -552,6 +552,94 @@ plot(currents, frequency);
 hold off    
 end
 
+function hodgkin_huxley
+    global C;
+    global Iext;
+    global gK;
+    global gNa;
+    global gL;
+    global VK;
+    global VNa;
+    global VL;
+    global eps;
+    global f;
+    global hconst;
+    
+    C = 1;
+    gK = 36;
+    VK = -72;
+    gNa = 120;
+    VNa = 55;
+    gL = 0.3;
+    Iext = 0;
+    eps = 1e-10;
+    
+    options = odeset('RelTol',1e-9,'AbsTol',1e-9, 'refine',5, 'MaxStep', 1);
+     %% Running the model so that Vr = -60 (Question 13)
+    Vr = -60;
+    alphan = -0.01 * (Vr + eps + 50)/(exp(-(Vr + eps + 50)/10)-1);
+    alpham = -0.1 * (Vr + eps + 35)/(exp(-(Vr + eps + 35)/10)-1);
+    alphah = 0.07 * exp(-(Vr + 60)/20);
+    betan = 0.125 * exp(-(Vr + 60)/80);
+    betam = 4 * exp(-(Vr + 60)/18);
+    betah = 1/(exp(-(Vr + 30)/10) + 1);
+    
+    mInf = alpham/(alpham + betam);
+    nInf = alphan/(alphan + betan);
+    hInf = alphah/(alphah + betah);
+    hconst = hInf;
+ 
+    E_leak = Vr - (1/gL)*(Iext - gK * (nInf^4) * (Vr - VK) - gNa * (mInf^3) * hInf * (Vr - VNa));
+    fprintf('\n------------------------- Part 13 ------------------------------ \n');
+    fprintf('EL = %d \n', E_leak);
+    
+    VL = E_leak;
+    
+    %% Checking for Iext = 10uA (Question 13)
+    Iext = 10;
+    tSpan = [0 100];
+    
+    Sinit = [-60, nInf, mInf, hInf]; 
+    [t1, S] = ode15s(@(t,S)hodgkin_huxley_ddt(t,S), tSpan, Sinit, options);
+    figure;
+    plot(t1, S(:,1));
+    xlabel('Time(ms)');
+    ylabel('Voltage (in mV)');
+    title('Simulating HH model with given parameters');
+    
+    %% Current threshold (Question 14)
+    
+    fprintf('\n------------------------- Part 14 ------------------------------ \n');
+    Iext = 0;
+    impulseI = linspace(0,15,100);
+    for i = 1:100 
+        Sinit = [-60+impulseI(i)/C, nInf, mInf, hInf];
+        [t1, S] = ode15s(@(t,S)hodgkin_huxley_ddt(t,S), tSpan, Sinit, options);
+        max_V(i) = max(S(:,1));
+    end
+    thres = (min(max_V(:)) + max(max_V(:)))/2;
+    thres_i = 500;
+    for i = 1:100
+        if max_V(i) >= thres && i < thres_i
+            thres_i = i;
+        end
+    end
+    fprintf("Threshold: %f mA\n",impulseI(thres_i));
+    figure;
+    plot(impulseI, max_V);
+    xlabel('impulse current(mA)');
+    ylabel('Peak Voltage (in mV)');
+    title('Current pulse Threshold');
+    
+    
+    %% Stability of the model with Iext = 0 (Question 14)
+    fprintf('Iext =0\n');
+    stability_check(0);
+    
+    
+    %% Behaviour with Iext between 8 and 12 (Question 15)
+    
+end
 
 
 
