@@ -639,6 +639,25 @@ function hodgkin_huxley
     
     %% Behaviour with Iext between 8 and 12 (Question 15)
     
+    fprintf('\n------------------------- Part 15 ------------------------------ \n');  
+    for i=8:12
+        fprintf("Iext = %d \n", i);
+        stability_check(i);
+    end
+    
+    %% Behaviour of action potential for fraction of activation NA+ channel(question 16)
+    figure;
+    Sinit = [-52, nInf, mInf, hInf];
+    for f = [0, 0.1, 0.17, 0.2]
+        [t1, S] = ode15s(@(t,S)HH_f_na(t,S), tSpan, Sinit, options);
+        hold on;
+        plot(t1, S(:,1));
+    end
+    xlabel('Time(ms)');
+    ylabel('Voltage (in mV)');
+    title('Action Potential with loss of Na+ activation channel');
+    legend('f = 0','f = 0.1','f = 0.17','f = 0.2');
+    grid on;
 end
 
 
