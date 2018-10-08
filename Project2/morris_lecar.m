@@ -658,6 +658,77 @@ function hodgkin_huxley
     title('Action Potential with loss of Na+ activation channel');
     legend('f = 0','f = 0.1','f = 0.17','f = 0.2');
     grid on;
+    %% Reduced V-n Model (Question 17)
+    % Checking for current injection (Iext = 10uA)
+    f = 0;
+    Iext = 10;
+    tSpan = [0 100];
+    Sinit = [-60, nInf]; 
+    [t1, S] = ode15s(@(t,S)HH_reduced(t,S), tSpan, Sinit, options);
+    figure;
+    plot(t1, S(:,1));
+    xlabel('Time(ms)');
+    ylabel('Voltage (in mV)');
+    title('Simulating HH V-n Reduced model for current injection');
+    hold off
+    
+    % Checking for current pulse
+    Iext = 0;
+    f = 0;
+    impulseI = linspace(0,15,5);
+    figure;
+    xlabel('Time(ms)');
+    ylabel('Voltage (in mV)');
+    title('Simulating HH V-n Reduced model for current pulse');
+    hold on
+    for i = 1:5
+        Sinit = [-60+impulseI(i)/C, nInf];
+        [t1, S] = ode15s(@(t,S)HH_reduced(t,S), [0 20], Sinit, options);
+        plot(t1, S(:,1));
+        hold on
+    end
+    legend(strcat('Iimpulse = ', num2str(impulseI(1))), strcat('Iimpulse = ', num2str(impulseI(2))), ...
+            strcat('Iimpulse = ', num2str(impulseI(3))), strcat('Iimpulse = ', num2str(impulseI(4))), ...
+            strcat('Iimpulse = ', num2str(impulseI(5))));
+    hold off
+    
+    
+    %% Phase Plane Analysis for Reduced Model (Question 18)
+    fs = linspace(0.02, 0.4, 5);
+    Iext = 0;
+    
+    % Observe response for varying current impulse  with varying values of f 
+    for f = fs
+        figure;
+        hold on
+        syms V
+    
+        % defining some intermediate function expressions for null clines
+        alphn = @(V) -0.01 * (V + eps + 50)/(exp(-(V + eps + 50)/10)-1);
+        alphm = @(V) -0.1 * (V + eps + 35)/(exp(-(V + eps + 35)/10)-1);
+        betn = @(V) 0.125 * exp(-(V + 60)/80);
+        betm = @(V) 4 * exp(-(V + 60)/18);
+        minf = @(V) alphm(V) / (alphm(V) + betm(V));
+    
+        Vnc = @(V) ( (Iext - gNa*(1-f)*(minf(V)^3)*hconst*(V-VNa) - gNa*f*(minf(V)^3)*(V-VNa) - gL*(V-VL))/(gK * (V-VK)) )^(1/4);
+        nnc = @(V) alphn(V)/(alphn(V) + betn(V));                                                                   
+        fplot(@(V) Vnc(V), [-80 100], ':');
+        fplot(@(V) nnc(V), [-80 100], '--');
+        xlabel('V(in mV)');
+        ylabel('n');
+        title(strcat('Phase Plane Plot(HH-V-n reduced) with f = ', num2str(f)));
+        hold on;
+        
+        impulseI = linspace(0, 15, 5);
+        for i=1:5
+            Sinit = [-60+impulseI(i)/C, nInf];
+            [t1, S1] = ode15s(@(t,S)HH_reduced(t,S), [0, 500], Sinit, options);
+            hold on;
+            plot(S1(:,1), S1(:,2));
+        end
+        legend('V-null cline', 'n-null cline', 'Impulse=0' , 'Impulse=3.75', ...
+                'Impulse=7.5', 'Impulse=11.25', 'Impulse=15');
+    end
 end
 
 
