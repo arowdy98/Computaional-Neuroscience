@@ -729,6 +729,96 @@ function hodgkin_huxley
         legend('V-null cline', 'n-null cline', 'Impulse=0' , 'Impulse=3.75', ...
                 'Impulse=7.5', 'Impulse=11.25', 'Impulse=15');
     end
+    %% Anode Break excitation effect (Question 19) 
+    figure;
+    tSpan1 = [0 20];
+    Sinit1 = [-60, nInf, mInf, hInf];
+    Iext = -3;
+    [t1, S1] = ode15s(@(t,S)hodgkin_huxley_ddt(t,S), tSpan1, Sinit1, options);
+    tSpan2 = [20 100];
+    Sinit2 = [S1(end,1), S1(end,2), S1(end,3), S1(end,4)];
+    nAfterA = S1(end,2);
+    hAfterA = S1(end,4);
+    Iext = 0;
+    [t2, S2] = ode15s(@(t,S)hodgkin_huxley_ddt(t,S), tSpan2, Sinit2, options);
+    totalT = [t1; t2];
+    totalV = [S1(:,1); S2(:,1)];
+    plot(totalT, totalV);
+    xlabel('Time(in ms)');
+    ylabel('Voltage(in mV)');
+    title('Action potential in case of Anode Break excitation');
+    grid on;
+    
+     %% Phase plane of the reduced HH model (Question 20) 
+    fprintf('\n------------------------- Part 20 ------------------------------ \n');
+    Vr = -60;
+    
+    alphan = @(V) -0.01 * (V + eps + 50)/(exp(-(V + eps + 50)/10)-1);
+    alpham = @(V) -0.1 * (V + eps + 35)/(exp(-(V + eps + 35)/10)-1);
+    alphah = @(V) 0.07 * exp(-(V + 60)/20);
+    betan = @(V) 0.125 * exp(-(V + 60)/80);
+    betam = @(V) 4 * exp(-(V + 60)/18);
+    betah = @(V) 1/(exp(-(V + 30)/10) + 1);
+    
+    mInf = alpham(Vr)/(alpham(Vr) + betam(Vr));
+    nInf = alphan(Vr)/(alphan(Vr) + betan(Vr));
+    hInf = alphah(Vr)/(alphah(Vr) + betah(Vr));
+    
+    Iext = -3;
+    tSpan1 = [0 20];
+    Sinit1 = [-60, mInf];
+    [t1, S1] = ode15s(@(t,S)HH_reduced_m(t,S,nInf,hInf), tSpan1, Sinit1, options);
+    Vnc1 = @(V) (((Iext - gK * (V -VK) * (nInf^4)- gL*(V-VL))/(gNa*hInf*(V-VNa)))^(1/3));
+    mnc = @(V) alpham(V)/(alpham(V) + betam(V));
+    figure;
+    hold on;
+    fplot(@(V) Vnc1(V), [-80 100], ':');
+    fplot(@(V) mnc(V), [-80 100], '--');
+    
+    Iext = 0;
+    tSpan2 = [20 100];
+    Sinit2 = [S1(end,1), S1(end,2)];
+    
+    nInf1 = nAfterA;
+    hInf1 = hAfterA;
+    
+    [t2, S2] = ode15s(@(t,S)HH_reduced_m(t,S,nInf1,hInf1), tSpan2, Sinit2, options);
+    Vnc2 = @(V) ( (Iext - gK * (V -VK) * (nInf^4)- gL*(V-VL))/(gNa*hInf*(V-VNa)))^(1/3);
+    fplot(@(V) Vnc2(V), [-80 100], '-*');
+    
+    totalV = [S1(:,1); S2(:,1)];
+    totalm = [S1(:,2); S2(:,2)];                                                              
+    plot(totalV,totalm);
+    ylabel('m');
+    xlabel('Voltage(in mV)');
+    title('Phase Plane for anode break');
+    grid on;
+    
+    % Equilibrium points  
+    Iext = -3;
+    syms V m;
+    
+    V_nc = (1/C) * (Iext - gK * nInf^4 * (V - VK) - gNa * m^3 * hInf* (V - VNa) - gL * (V - VL)) == 0;
+    m_nc = alpham *(1-m) - betam*m == 0 ;
+    
+    eq_pt = solve([V_nc, m_nc], [V, m]);
+    V_eq1 = double(eq_pt.V);
+    m_eq1 = double(eq_pt.m);
+    
+    fprintf('Equilibrium Point for case 1 V=%f m=%f\n',eq_pt.V,eq_pt.m);
+    
+    syms V m;
+    
+    Iext=0;
+    V_nc = (1/C) * (Iext - gK * nInf1^4 * (V - VK) - gNa * m^3 * hInf1* (V - VNa) - gL * (V - VL)) == 0;
+    m_nc = alpham *(1-m) - betam*m == 0 ;
+    
+    eq_pt = solve([V_nc, m_nc], [V, m]);
+    V_eq1 = double(eq_pt.V);
+    m_eq1 = double(eq_pt.m);
+    
+    fprintf('Equilibrium Point for case 2 V=%f m=%f\n',eq_pt.V,eq_pt.m);
+
 end
 
 
