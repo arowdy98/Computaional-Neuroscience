@@ -87,4 +87,126 @@ for i = 1:6 % For each of the different bin sizes
         ylim([min_v max_v]);
     end
 end
+%% QUESTION 4: SPIKE TRIGGERED AVERAGE
+sta = zeros(4, 100);
+h = zeros(4, 100);
+
+% Required for Whitening correction:
+Rxx = autocorr(Stimulus, 99);  
+Css = zeros(100,100);
+Css = toeplitz(Rxx);
+
+% Calculate the STA (<Rpx>):
+for i=1:4
+    total_spike_count = 0;
+    for j=1:50
+        % Search for how many spikes arrive before 15s (in training set)
+        total_spike_count = total_spike_count + nnz(All_Spike_Times{i,j} <= 15) 
+        % Generate a cummulative STA from these spikes in training set:
+        for k=1:nnz(All_Spike_Times{i,j} <= 15)
+            int_timing = round(All_Spike_Times{i,j}(k)*1000);
+            stim_values = Stimulus(max([int_timing-99 1]):int_timing);
+            partial_STA = [zeros(1,100-length(stim_values)) stim_values];
+            sta(i,:) = sta(i,:) + partial_STA;  % Accumulate contribution of this repeat to sta
+        end
+    end
+    sta(i,:)=sta(i,:)/total_spike_count; % Average out the contributions
+    figure(9);
+    subplot(2,2,i);
+    plot(0:99,fliplr(sta(i,:)))     % Plot STA for this neuron   
+    xlabel('time (ms)');
+    ylabel('STA');
+    ylim([-0.5 0.5]);
+    title(['h(t) without correction for neuron ' num2str(i)]);
+      
+    % Applying whitening correction:
+    h(i,100:-1:1)=(Css\sta(i,:)')';
+    figure(10);
+    subplot(2,2,i);
+    plot(0:99,h(i,:));       % Plot corrected values
+    xlabel('time (ms)');
+    ylabel('h(t)');
+    ylim([-1 1]);
+    title(['h(t) with correction for neuron ' num2str(i)]);
+end
+
+%% Part 5
+%% Q5
+    stimulus = Stimulus;
+    psth=PSTH/1000;
+    % take first 15000 values of the stimulus to get predicted y
+    pred(1, :) = conv(stimulus(1:15000), h(1, :)); x(1,1:15000) = pred(1, 1:15000); 
+    pred(2, :) = conv(stimulus(1:15000), h(2, :)); x(2,1:15000) = pred(2, 1:15000);
+    pred(3, :) = conv(stimulus(1:15000), h(3, :)); x(3,1:15000) = pred(3, 1:15000);
+    pred(4, :) = conv(stimulus(1:15000), h(4, :)); x(4,1:15000) = pred(4, 1:15000);
+    
+    % estimates of the actual rates from the psth
+    y(1, 1:15000) = 1000*psth(1, 1:15000); 
+    y(2, 1:15000) = 1000*psth(2, 1:15000); 
+    y(3, 1:15000) = 1000*psth(3, 1:15000); 
+    y(4, 1:15000) = 1000*psth(4, 1:15000); 
+    
+    % average the results in bins
+    bin_size = 30;
+    for i = 1:ceil(15000/bin_size)
+        e = i*bin_size;
+        if e>15000
+            e = 15000;
+        end
+        x1(i) = mean( x(1, (1+(i-1)*bin_size):e) );
+        x2(i) = mean( x(2, (1+(i-1)*bin_size):e) );
+        x3(i) = mean( x(3, (1+(i-1)*bin_size):e) );
+        x4(i) = mean( x(4, (1+(i-1)*bin_size):e) );
+    
+        y1(i) = mean( y(1, (1+(i-1)*bin_size):e) );
+        y2(i) = mean( y(2, (1+(i-1)*bin_size):e) );
+        y3(i) = mean( y(3, (1+(i-1)*bin_size):e) );
+        y4(i) = mean( y(4, (1+(i-1)*bin_size):e) );
+    end
+    
+    figure()
+    subplot(2,2,1)
+    scatter(x1, y1)
+    title('PSTH vs y(t) for neuron 1')
+    xlabel('y(t) = s(t)*h(t)')
+    ylabel('PSTH ~ \lambda(t)')
+    subplot(2,2,2)
+    scatter(x2, y2)
+    title('PSTH vs y(t) for neuron 2')
+    xlabel('y(t) = s(t)*h(t)')  
+    ylabel('PSTH ~ \lambda(t)')
+    subplot(2,2,3)
+    scatter(x3, y3)
+    title('PSTH vs y(t) for neuron 3')
+    xlabel('y(t) = s(t)*h(t)')
+    ylabel('PSTH ~ \lambda(t)')
+    subplot(2,2,4)
+    scatter(x4, y4)
+    title('PSTH vs y(t) for neuron 4')
+    xlabel('y(t) = s(t)*h(t)')
+    ylabel('PSTH ~ \lambda(t)')
+        
+    [fit, gof] = createFits(x1, y1, x2, y2, x3, y3, x4, y4);
+    
+    save('fits', 'fit', 'gof')
+    
+    % predictions
+    % linear filter
+    pred1 = conv(stimulus(15001:20000), h(1, :)); pred1 = pred1(1:5000);
+    pred2 = conv(stimulus(15001:20000), h(2, :)); pred2 = pred2(1:5000);
+    pred3 = conv(stimulus(15001:20000), h(3, :)); pred3 = pred3(1:5000);
+    pred4 = conv(stimulus(15001:20000), h(4, :)); pred4 = pred4(1:5000);
+    % add non-linearity
+    for i = 1:5000
+        pred1(i) = (fit{1,1}.a)/(1+exp(-fit{1,1}.b*(pred1(i)-fit{1,1}.c)));
+        pred2(i) = (fit{2,1}.a)/(1+exp(-fit{2,1}.b*(pred2(i)-fit{2,1}.c)));
+        pred3(i) = (fit{3,1}.a)/(1+exp(-fit{3,1}.b*(pred3(i)-fit{3,1}.c)));
+        pred4(i) = (fit{4,1}.a)/(1+exp(-fit{4,1}.b*(pred4(i)-fit{4,1}.c)));
+    end 
+    
+    % ground truths
+    gt1 = 1000*psth(1, 15001:20000);
+    gt2 = 1000*psth(2, 15001:20000);
+    gt3 = 1000*psth(3, 15001:20000);
+    gt4 = 1000*psth(4, 15001:20000);
 end
